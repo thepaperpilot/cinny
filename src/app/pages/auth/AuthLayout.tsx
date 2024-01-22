@@ -146,17 +146,6 @@ export function AuthLayout() {
             </Box>
           </Header>
           <Box className={css.AuthCardContent} direction="Column">
-            <Box direction="Column" gap="100">
-              <Text as="label" size="L400" priority="300">
-                Homeserver
-              </Text>
-              <ServerPicker
-                server={server}
-                serverList={clientConfig.homeserverList ?? []}
-                allowCustomServer={clientConfig.allowCustomHomeservers}
-                onServerChange={selectServer}
-              />
-            </Box>
             {discoveryState.status === AsyncStatus.Loading && (
               <AuthLayoutLoading message="Looking for homeserver..." />
             )}
