@@ -15,7 +15,23 @@ import { useDeviceList } from '../../hooks/useDeviceList';
 
 import { tabText as settingTabText } from '../settings/Settings';
 
+function Search() {
+    if (initMatrix.matrixClient == null) {
+        return null;
+    }
+    return (
+        <li>
+            <a onClick={() => openSearch()}>
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </a>
+        </li>
+    );
+}
+
 function CrossSigninAlert() {
+    if (initMatrix.matrixClient == null) {
+        return null;
+    }
     const deviceList = useDeviceList();
     const unverified = deviceList?.filter((device) => isCrossVerified(device.device_id) === false);
   
@@ -31,6 +47,13 @@ function CrossSigninAlert() {
 }
 
 function ProfileAvatarMenu() {
+    if (initMatrix.matrixClient == null) {
+        return (
+            <li>
+                <a href="https://matrix.incremental.social/_matrix/client/v3/login/sso/redirect/oidc-incrementalsocial?redirectUrl=http%3A%2F%2Flocalhost%3A8082%2Flogin%2Fincremental.social">Log in</a>
+            </li>
+        );
+    }
     const mx = initMatrix.matrixClient;
     const userId = mx.getUserId();
     const [profile, setProfile] = useState({
@@ -81,6 +104,9 @@ function ProfileAvatarMenu() {
 }
 
 function useTotalInvites() {
+    if (initMatrix.matrixClient == null) {
+        return [0];
+    }
     const { roomList } = initMatrix;
     const totalInviteCount = () => roomList.inviteRooms.size
         + roomList.inviteSpaces.size
@@ -124,11 +150,7 @@ function Navbar() {
                 </menu>
                 <div class="flex-spacer"></div>
                 <menu>
-                    <li>
-                        <a onClick={() => openSearch()}>
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                        </a>
-                    </li>
+                    <Search />
                     {totalInvites !== 0 && (
                         <li>
                             <a onClick={() => openInviteList()}>
