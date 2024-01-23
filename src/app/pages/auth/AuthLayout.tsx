@@ -25,6 +25,7 @@ import { AsyncStatus, useAsyncCallback } from '../../hooks/useAsyncCallback';
 import { LOGIN_PATH, REGISTER_PATH } from '../paths';
 import CinnySVG from '../../../../public/res/svg/cinny.svg';
 import { ServerPicker } from './ServerPicker';
+import Navbar from '../../organisms/navigation/Navbar';
 import { AutoDiscoveryAction, autoDiscovery } from '../../cs-api';
 import { SpecVersionsLoader } from '../../components/SpecVersionsLoader';
 import { SpecVersionsProvider } from '../../hooks/useSpecVersions';
@@ -131,6 +132,7 @@ export function AuthLayout() {
 
   return (
     <Scroll variant="Background" visibility="Hover" size="300" hideTrack>
+      <Navbar />
       <Box
         className={classNames(css.AuthLayout, PatternsCss.BackgroundDotPattern)}
         direction="Column"

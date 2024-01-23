@@ -15,7 +15,6 @@ import { AuthLayout, Login, Register, ResetPassword, authLayoutLoader } from './
 import { LOGIN_PATH, REGISTER_PATH, RESET_PASSWORD_PATH, ROOT_PATH } from './paths';
 import { isAuthenticated } from '../../client/state/auth';
 import Client from '../templates/client/Client';
-import Navbar from '../organisms/navigation/Navbar';
 import { getLoginPath } from './pathUtils';
 import { ConfigConfigError, ConfigConfigLoading } from './ConfigConfig';
 
@@ -72,7 +71,6 @@ function App() {
       {(clientConfig) => (
         <ClientConfigProvider value={clientConfig}>
           <JotaiProvider>
-            <Navbar />
             <RouterProvider router={createRouter(clientConfig)} />
           </JotaiProvider>
         </ClientConfigProvider>
