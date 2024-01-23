@@ -272,7 +272,7 @@ export const nordTheme = createTheme(color, {
     ContainerHover: '#5E81AC',
     ContainerActive: '#5E81AC',
     ContainerLine: '#5E81AC',
-    OnContainer: '#5E81AC',
+    OnContainer: '#ECEFF4',
   },
 
   Secondary: {
