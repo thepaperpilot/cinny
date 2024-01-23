@@ -9,12 +9,10 @@ import initMatrix from '../../../client/initMatrix';
 import cons from '../../../client/state/cons';
 import colorMXID from '../../../util/colorMXID';
 import {
-  selectTab, openShortcutSpaces, openInviteList,
-  openSearch, openSettings, openReusableContextMenu,
+  selectTab, openShortcutSpaces, openReusableContextMenu,
 } from '../../../client/action/navigation';
 import { moveSpaceShortcut } from '../../../client/action/accountData';
 import { abbreviateNumber, getEventCords } from '../../../util/common';
-import { isCrossVerified } from '../../../util/matrixUtil';
 
 import Avatar from '../../atoms/avatar/Avatar';
 import NotificationBadge from '../../atoms/badge/NotificationBadge';
@@ -25,14 +23,8 @@ import SpaceOptions from '../../molecules/space-options/SpaceOptions';
 import HomeIC from '../../../../public/res/ic/outlined/home.svg';
 import UserIC from '../../../../public/res/ic/outlined/user.svg';
 import AddPinIC from '../../../../public/res/ic/outlined/add-pin.svg';
-import SearchIC from '../../../../public/res/ic/outlined/search.svg';
-import InviteIC from '../../../../public/res/ic/outlined/invite.svg';
-import ShieldUserIC from '../../../../public/res/ic/outlined/shield-user.svg';
 
 import { useSelectedTab } from '../../hooks/useSelectedTab';
-import { useDeviceList } from '../../hooks/useDeviceList';
-
-import { tabText as settingTabText } from '../settings/Settings';
 
 function useNotificationUpdate() {
   const { notifications } = initMatrix;
@@ -47,63 +39,6 @@ function useNotificationUpdate() {
       notifications.removeListener(cons.events.notifications.NOTI_CHANGED, onNotificationChanged);
     };
   }, []);
-}
-
-function ProfileAvatarMenu() {
-  const mx = initMatrix.matrixClient;
-  const [profile, setProfile] = useState({
-    avatarUrl: null,
-    displayName: mx.getUser(mx.getUserId()).displayName,
-  });
-
-  useEffect(() => {
-    const user = mx.getUser(mx.getUserId());
-    const setNewProfile = (avatarUrl, displayName) => setProfile({
-      avatarUrl: avatarUrl || null,
-      displayName: displayName || profile.displayName,
-    });
-    const onAvatarChange = (event, myUser) => {
-      setNewProfile(myUser.avatarUrl, myUser.displayName);
-    };
-    mx.getProfileInfo(mx.getUserId()).then((info) => {
-      setNewProfile(info.avatar_url, info.displayname);
-    });
-    user.on('User.avatarUrl', onAvatarChange);
-    return () => {
-      user.removeListener('User.avatarUrl', onAvatarChange);
-    };
-  }, []);
-
-  return (
-    <SidebarAvatar
-      onClick={openSettings}
-      tooltip="Settings"
-      avatar={(
-        <Avatar
-          text={profile.displayName}
-          bgColor={colorMXID(mx.getUserId())}
-          size="normal"
-          imageSrc={profile.avatarUrl !== null ? mx.mxcUrlToHttp(profile.avatarUrl, 42, 42, 'crop') : null}
-        />
-      )}
-    />
-  );
-}
-
-function CrossSigninAlert() {
-  const deviceList = useDeviceList();
-  const unverified = deviceList?.filter((device) => isCrossVerified(device.device_id) === false);
-
-  if (!unverified?.length) return null;
-
-  return (
-    <SidebarAvatar
-      className="sidebar__cross-signin-alert"
-      tooltip={`${unverified.length} unverified sessions`}
-      onClick={() => openSettings(settingTabText.SECURITY)}
-      avatar={<Avatar iconSrc={ShieldUserIC} iconColor="var(--ic-danger-normal)" size="normal" />}
-    />
-  );
 }
 
 function FeaturedTab() {
@@ -320,29 +255,7 @@ function SpaceShortcut() {
   );
 }
 
-function useTotalInvites() {
-  const { roomList } = initMatrix;
-  const totalInviteCount = () => roomList.inviteRooms.size
-    + roomList.inviteSpaces.size
-    + roomList.inviteDirects.size;
-  const [totalInvites, updateTotalInvites] = useState(totalInviteCount());
-
-  useEffect(() => {
-    const onInviteListChange = () => {
-      updateTotalInvites(totalInviteCount());
-    };
-    roomList.on(cons.events.roomList.INVITELIST_UPDATED, onInviteListChange);
-    return () => {
-      roomList.removeListener(cons.events.roomList.INVITELIST_UPDATED, onInviteListChange);
-    };
-  }, []);
-
-  return [totalInvites];
-}
-
 function SideBar() {
-  const [totalInvites] = useTotalInvites();
-
   return (
     <div className="sidebar">
       <div className="sidebar__scrollable">
@@ -362,26 +275,6 @@ function SideBar() {
             </div>
           </div>
         </ScrollView>
-      </div>
-      <div className="sidebar__sticky">
-        <div className="sidebar-divider" />
-        <div className="sticky-container">
-          <SidebarAvatar
-            tooltip="Search"
-            onClick={() => openSearch()}
-            avatar={<Avatar iconSrc={SearchIC} size="normal" />}
-          />
-          { totalInvites !== 0 && (
-            <SidebarAvatar
-              tooltip="Invites"
-              onClick={() => openInviteList()}
-              avatar={<Avatar iconSrc={InviteIC} size="normal" />}
-              notificationBadge={<NotificationBadge alert content={totalInvites} />}
-            />
-          )}
-          <CrossSigninAlert />
-          <ProfileAvatarMenu />
-        </div>
       </div>
     </div>
   );

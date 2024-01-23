@@ -6,6 +6,7 @@ import { initRoomListListener } from '../../../client/event/roomList';
 
 import Text from '../../atoms/text/Text';
 import Spinner from '../../atoms/spinner/Spinner';
+import Navbar from '../../organisms/navigation/Navbar';
 import Navigation from '../../organisms/navigation/Navigation';
 import ContextMenu, { MenuItem } from '../../atoms/context-menu/ContextMenu';
 import IconButton from '../../atoms/button/IconButton';
@@ -119,6 +120,7 @@ function Client() {
 
   return (
     <MatrixClientProvider value={initMatrix.matrixClient}>
+      <Navbar />
       <div className="client-container">
         <div className="navigation__wrapper" ref={navWrapperRef}>
           <Navigation />

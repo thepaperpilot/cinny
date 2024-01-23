@@ -2,7 +2,7 @@
 
 .client-container {
   display: flex;
-  height: 100%;
+  height: calc(100% - 3.25rem);
 }
 
 .navigation__wrapper {
