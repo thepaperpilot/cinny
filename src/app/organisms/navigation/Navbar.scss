@@ -57,10 +57,7 @@
         li {
           height: 100%;
           display: flex;
-          align-items: center;
-          min-width: 3rem;
           border-bottom: solid 3px transparent;
-          padding: 3px 1rem 0;
           white-space: nowrap;
           position: relative;
   
@@ -84,7 +81,9 @@
           &> a {
             display: flex;
             width: 100%;
-            justify-content: center;
+            align-items: center;
+            min-width: 3rem;
+            padding: 3px 1rem 0;
           }
 
           .notification-badge {
