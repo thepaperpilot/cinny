@@ -253,6 +253,16 @@ function ProfileFooter({ roomId, userId, onRequestClose }) {
       >
         {isCreatingDM ? 'Creating room...' : 'Message'}
       </Button>
+      {userId.endsWith("incremental.social") && 
+        <a
+          target="_blank"
+          class="btn-surface"
+          style={{ color: "var(--tc-surface-high)", textDecoration: "none" }}
+          href={`https://incremental.social/u/${userId.slice(1, userId.indexOf(":"))}`}
+        >
+          Full profile
+        </a>}
+      <div style={{flexGrow: 1}} />
       { isBanned && canIKick && (
         <Button
           variant="positive"

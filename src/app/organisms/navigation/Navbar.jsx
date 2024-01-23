@@ -32,7 +32,6 @@ function CrossSigninAlert() {
 
 function ProfileAvatarMenu() {
     const mx = initMatrix.matrixClient;
-    console.log("!!", mx);
     const userId = mx.getUserId();
     const [profile, setProfile] = useState({
         avatarUrl: null,
