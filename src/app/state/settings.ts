@@ -28,8 +28,8 @@ export interface Settings {
 }
 
 const defaultSettings: Settings = {
-  themeIndex: 0,
-  useSystemTheme: true,
+  themeIndex: 4,
+  useSystemTheme: false,
   isMarkdown: true,
   editorToolbar: false,
   twitterEmoji: false,

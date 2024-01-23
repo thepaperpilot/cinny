@@ -88,6 +88,7 @@ function AppearanceSection() {
                 { text: 'Silver' },
                 { text: 'Dark' },
                 { text: 'Butter' },
+                { text: 'Nord' },
               ]}
               onSelect={(index) => {
                 if (settings.useSystemTheme) toggleSystemTheme();
@@ -439,11 +440,6 @@ function Settings() {
   const [isOpen, requestClose] = useWindowToggle(setSelectedTab);
 
   const handleTabChange = (tabItem) => setSelectedTab(tabItem);
-  const handleLogout = async () => {
-    if (await confirmDialog('Logout', 'Are you sure that you want to logout your session?', 'Logout', 'danger')) {
-      initMatrix.logout();
-    }
-  };
 
   return (
     <PopupWindow
@@ -452,9 +448,6 @@ function Settings() {
       title={<Text variant="s1" weight="medium" primary>Settings</Text>}
       contentOptions={(
         <>
-          <Button variant="danger" iconSrc={PowerIC} onClick={handleLogout}>
-            Logout
-          </Button>
           <IconButton src={CrossIC} onClick={requestClose} tooltip="Close" />
         </>
       )}

@@ -3,7 +3,7 @@ import EventEmitter from 'events';
 import appDispatcher from '../dispatcher';
 
 import cons from './cons';
-import { darkTheme, butterTheme, silverTheme } from '../../colors.css';
+import { darkTheme, butterTheme, silverTheme, nordTheme } from '../../colors.css';
 import { onLightFontWeight, onDarkFontWeight } from '../../config.css';
 
 function getSettings() {
@@ -23,9 +23,9 @@ class Settings extends EventEmitter {
   constructor() {
     super();
 
-    this.themeClasses = [lightTheme, silverTheme, darkTheme, butterTheme];
+    this.themeClasses = [lightTheme, silverTheme, darkTheme, butterTheme, nordTheme];
     this.fontWeightClasses = [onLightFontWeight, onLightFontWeight, onDarkFontWeight, onDarkFontWeight]
-    this.themes = ['', 'silver-theme', 'dark-theme', 'butter-theme'];
+    this.themes = ['', 'silver-theme', 'dark-theme', 'butter-theme', 'nord-theme'];
     this.themeIndex = this.getThemeIndex();
 
     this.useSystemTheme = this.getUseSystemTheme();
