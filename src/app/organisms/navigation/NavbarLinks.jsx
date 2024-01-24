@@ -12,9 +12,6 @@ function NavbarLinks() {
         <li>
             <a href="https://incremental.social/people">People</a>
         </li>
-        <li>
-            <a href="https://incremental.social/magazines">Magazines</a>
-        </li>
         <li class="active">
             <a href="https://chat.incremental.social">Chat</a>
         </li>
