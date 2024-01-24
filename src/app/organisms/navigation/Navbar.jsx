@@ -85,7 +85,7 @@ function ProfileAvatarMenu() {
     return (
       <li class="dropdown">
           <a class="login">
-              <img class="avatar" src={profile.avatarUrl !== null ? mx.mxcUrlToHttp(profile.avatarUrl, 42, 42, 'crop') : null} />
+              <img class="avatar" src={profile.avatarUrl !== null ? mx.mxcUrlToHttp(profile.avatarUrl, 50, 50, 'crop') : null} />
               <span class="user-name">{ profile.displayName }</span>
           </a>
           <ul class="dropdown-menu">
@@ -154,7 +154,7 @@ function Navbar() {
                     {totalInvites !== 0 && (
                         <li>
                             <a onClick={() => openInviteList()}>
-                                <i class="fa-solid fa-envelope"></i>
+                                <i class="fa-solid fa-bell"></i>
                             </a>
                             <NotificationBadge alert content={totalInvites} />
                         </li>
