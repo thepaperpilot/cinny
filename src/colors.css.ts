@@ -258,7 +258,7 @@ export const nordTheme = createTheme(color, {
     Container: '#3B4252',
     ContainerHover: '#3B4252',
     ContainerActive: '#2E3440',
-    ContainerLine: '#434C5E',
+    ContainerLine: '#2E3440',
     OnContainer: '#ECEFF4',
   },
 
