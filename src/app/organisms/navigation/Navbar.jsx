@@ -22,7 +22,7 @@ function Search() {
     return (
         <li>
             <a onClick={() => openSearch()}>
-                <i class="fa-solid fa-magnifying-glass"></i>
+                <i class="fa-solid fa-compass"></i>
             </a>
         </li>
     );
