@@ -565,3 +565,8 @@ audio:not([controls]) {
   justify-content: center;
   align-items: center;
 }
+
+.raw-modal__overlay {
+  top: 52px !important;
+  height: calc(100% - 52px) !important;
+}
