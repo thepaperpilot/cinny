@@ -6,7 +6,7 @@
   border-radius: var(--bo-radius);
 
   .text {
-    color: var(--tc-badge);
+    color: var(--tc-badge) !important;
     text-align: center;
   }
 

@@ -250,7 +250,7 @@ export const nordTheme = createTheme(color, {
     Container: '#434C5E',
     ContainerHover: '#3B4252',
     ContainerActive: '#3B4252',
-    ContainerLine: '#2E3440',
+    ContainerLine: '#ECEFF4',
     OnContainer: '#ECEFF4',
   },
 
@@ -258,7 +258,7 @@ export const nordTheme = createTheme(color, {
     Container: '#3B4252',
     ContainerHover: '#3B4252',
     ContainerActive: '#2E3440',
-    ContainerLine: '#2E3440',
+    ContainerLine: '#ECEFF4',
     OnContainer: '#ECEFF4',
   },
 
@@ -276,16 +276,16 @@ export const nordTheme = createTheme(color, {
   },
 
   Secondary: {
-    Main: '#2E3440',
+    Main: '#ECEFF4',
     MainHover: '#2E3440',
     MainActive: '#2E3440',
     MainLine: '#2E3440',
     OnMain: '#ECEFF4',
-    Container: '#D8DEE9',
-    ContainerHover: '#D8DEE9',
-    ContainerActive: '#D8DEE9',
-    ContainerLine: '#D8DEE9',
-    OnContainer: '#2E3440',
+    Container: '#2E3440',
+    ContainerHover: '#2E3440',
+    ContainerActive: '#2E3440',
+    ContainerLine: '#2E3440',
+    OnContainer: '#D8DEE9',
   },
 
   Success: {
