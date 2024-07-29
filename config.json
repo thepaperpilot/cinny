@@ -8,12 +8,13 @@
   "featuredCommunities": {
     "openAsDefault": false,
     "spaces": [
-      "#profectus:incremental.social"
+      "#profectus:incremental.social",
+      "#galaxy:glxy.chat"
     ],
     "rooms": [
       "#offtopic:incremental.social"
     ],
-    "servers": ["incremental.social", "matrix.org", "glxy.chat"]
+    "servers": ["envs.net", "matrix.org", "monero.social", "mozilla.org"]
   },
 
   "hashRouter": {
