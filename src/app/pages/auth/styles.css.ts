@@ -2,7 +2,7 @@ import { style } from '@vanilla-extract/css';
 import { DefaultReset, color, config, toRem } from 'folds';
 
 export const AuthLayout = style({
-  minHeight: '100%',
+  minHeight: 'calc(100% - 3.25em)',
   backgroundColor: color.Background.Container,
   color: color.Background.OnContainer,
   padding: config.space.S400,

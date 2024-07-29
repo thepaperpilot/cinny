@@ -47,7 +47,7 @@ export default defineConfig({
     host: true,
     proxy: {
       "^\\/.*?\\/olm\\.wasm$": {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:8081',
         rewrite: () => '/olm.wasm'
       }
     }

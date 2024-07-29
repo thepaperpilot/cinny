@@ -3,7 +3,7 @@ import EventEmitter from 'events';
 import appDispatcher from '../dispatcher';
 
 import cons from './cons';
-import { darkTheme, butterTheme, silverTheme } from '../../colors.css';
+import { darkTheme, butterTheme, silverTheme, nordTheme } from '../../colors.css';
 import { onLightFontWeight, onDarkFontWeight } from '../../config.css';
 
 function getSettings() {
@@ -23,9 +23,9 @@ class Settings extends EventEmitter {
   constructor() {
     super();
 
-    this.themeClasses = [lightTheme, silverTheme, darkTheme, butterTheme];
+    this.themeClasses = [lightTheme, silverTheme, darkTheme, butterTheme, nordTheme];
     this.fontWeightClasses = [onLightFontWeight, onLightFontWeight, onDarkFontWeight, onDarkFontWeight]
-    this.themes = ['', 'silver-theme', 'dark-theme', 'butter-theme'];
+    this.themes = ['', 'silver-theme', 'dark-theme', 'butter-theme', 'nord-theme'];
     this.themeIndex = this.getThemeIndex();
 
     this.useSystemTheme = this.getUseSystemTheme();
@@ -45,8 +45,8 @@ class Settings extends EventEmitter {
     if (typeof this.themeIndex === 'number') return this.themeIndex;
 
     const settings = getSettings();
-    if (settings === null) return 0;
-    if (typeof settings.themeIndex === 'undefined') return 0;
+    if (settings === null) return 4;
+    if (typeof settings.themeIndex === 'undefined') return 4;
     // eslint-disable-next-line radix
     return parseInt(settings.themeIndex);
   }
@@ -103,8 +103,8 @@ class Settings extends EventEmitter {
     if (typeof this.isMarkdown === 'boolean') return this.isMarkdown;
 
     const settings = getSettings();
-    if (settings === null) return true;
-    if (typeof settings.isMarkdown === 'undefined') return true;
+    if (settings === null) return false;
+    if (typeof settings.isMarkdown === 'undefined') return false;
     return settings.isMarkdown;
   }
 

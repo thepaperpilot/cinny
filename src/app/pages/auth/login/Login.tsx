@@ -55,9 +55,6 @@ export function Login() {
 
   return (
     <Box direction="Column" gap="500">
-      <Text size="H2" priority="400">
-        Login
-      </Text>
       {parsedFlows.token && loginSearchParams.loginToken && (
         <TokenLogin token={loginSearchParams.loginToken} />
       )}
@@ -80,7 +77,6 @@ export function Login() {
               parsedFlows.password !== undefined && parsedFlows.sso.identity_providers.length > 2
             }
           />
-          <span data-spacing-node />
         </>
       )}
       {!parsedFlows.password && !parsedFlows.sso && (
@@ -88,12 +84,8 @@ export function Login() {
           <Text style={{ color: color.Critical.Main }}>
             {`This client does not support login on "${server}" homeserver. Password and SSO based login method not found.`}
           </Text>
-          <span data-spacing-node />
         </>
       )}
-      <Text align="Center">
-        Do not have an account? <Link to={getRegisterPath(server)}>Register</Link>
-      </Text>
     </Box>
   );
 }

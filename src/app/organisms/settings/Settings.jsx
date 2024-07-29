@@ -118,6 +118,7 @@ function AppearanceSection() {
                 { text: 'Silver' },
                 { text: 'Dark' },
                 { text: 'Butter' },
+                { text: 'Nord' },
               ]}
               onSelect={(index) => {
                 if (settings.useSystemTheme) toggleSystemTheme();
@@ -634,9 +635,6 @@ function Settings() {
       }
       contentOptions={
         <>
-          <Button variant="danger" iconSrc={PowerIC} onClick={handleLogout}>
-            Logout
-          </Button>
           <IconButton src={CrossIC} onClick={requestClose} tooltip="Close" />
         </>
       }

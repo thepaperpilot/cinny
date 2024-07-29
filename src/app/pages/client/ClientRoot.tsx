@@ -29,6 +29,7 @@ import { CapabilitiesProvider } from '../../hooks/useCapabilities';
 import { MediaConfigProvider } from '../../hooks/useMediaConfig';
 import { MatrixClientProvider } from '../../hooks/useMatrixClient';
 import { SpecVersions } from './SpecVersions';
+import Navbar from '../../organisms/navigation/Navbar';
 import Windows from '../../organisms/pw/Windows';
 import Dialogs from '../../organisms/pw/Dialogs';
 import ReusableContextMenu from '../../atoms/context-menu/ReusableContextMenu';
@@ -202,6 +203,7 @@ export function ClientRoot({ children }: ClientRootProps) {
             {(capabilities, mediaConfig) => (
               <CapabilitiesProvider value={capabilities ?? {}}>
                 <MediaConfigProvider value={mediaConfig ?? {}}>
+                  <Navbar />
                   {children}
                   <Windows />
                   <Dialogs />

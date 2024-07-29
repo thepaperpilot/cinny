@@ -46,30 +46,6 @@ export function SidebarNav() {
             </SidebarStack>
           </Scroll>
         }
-        sticky={
-          <>
-            <SidebarStackSeparator />
-            <SidebarStack>
-              <SidebarItem>
-                <SidebarItemTooltip tooltip="Search">
-                  {(triggerRef) => (
-                    <SidebarAvatar
-                      as="button"
-                      ref={triggerRef}
-                      outlined
-                      onClick={() => openSearch()}
-                    >
-                      <Icon src={Icons.Search} />
-                    </SidebarAvatar>
-                  )}
-                </SidebarItemTooltip>
-              </SidebarItem>
-
-              <InboxTab />
-              <UserTab />
-            </SidebarStack>
-          </>
-        }
       />
     </Sidebar>
   );
