@@ -1,0 +1,221 @@
+@mixin collapseNav() {
+  @media screen and (max-width: 992px) {
+    @content;
+  }
+}
+
+@mixin condenseMenu() {
+  @media screen and (max-width: 690px) {
+    @content;
+  }
+}
+
+.nav-container {
+  align-items: end;
+  background: #2E3440;
+  color: #ECEFF4;
+  font-size: .85rem;
+  position: relative;
+  z-index: 1000;
+  height: 3.25rem;
+  line-height: normal;
+  border-bottom: solid 5px #3B4252;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-weight: 400;
+
+  .nav {
+    margin: 0 auto;
+    max-width: 1360px;
+    height: 100%;
+    display: flex;
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 1rem;
+      height: 100%;
+
+      #logo {
+          height: 1.75rem;
+
+          @include collapseNav() {
+              height: 1.5rem;
+          }
+      }
+    }
+
+    menu {
+      display: flex;
+      align-items: center;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      height: 100%;
+    
+      &> {
+        li {
+          height: 100%;
+          display: flex;
+          border-bottom: solid 3px transparent;
+          white-space: nowrap;
+          position: relative;
+  
+          &:hover, &.active {
+            border-bottom-color: #ECEFF4 !important;
+            cursor: pointer;
+          }
+
+          &.active {
+            background: #4C566A;
+          }
+
+          a {
+            color: #88C0D0;
+
+            &:hover {
+              text-decoration: none;
+            }
+          }
+
+          &> a {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            min-width: 3rem;
+            padding: 3px 1rem 0;
+          }
+
+          .notification-badge {
+            position: absolute;
+            right: calc(100% / 12);
+            bottom: calc(100% / 12);
+          }
+
+          @include condenseMenu() {
+            padding: 3px 0 0;
+            min-width: 2.5rem;
+          }
+        }
+      }
+    }
+  }
+
+  .login {
+    display: flex;
+    align-items: center;
+
+    .avatar {
+      border-radius: 50%;
+      height: 1.5625rem;
+      width: 1.5625rem;
+      margin-right: .3rem;
+
+      @include condenseMenu() {
+        margin-right: 0;
+      }
+    }
+
+    @include condenseMenu() {
+      .user-name {
+        display: none;
+      }
+    }
+  }
+
+  .dropdown {
+    position: relative;
+  }
+
+  .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 3px);
+    right: -5px;
+    background: #2e3440;
+    border: solid 5px #3B4252;
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-direction: column;
+    min-width: 10rem;
+    z-index: 100;
+
+    li a {
+      align-items: center;
+      display: flex;
+      height: 100%;
+      padding: .5rem 1rem;
+      white-space: nowrap;
+
+      &:hover {
+        background: #3b4252;
+      }
+    }
+  }
+
+  .dropdown:hover .dropdown-menu {
+    display: flex;
+  }
+
+  .mobile-links {
+    display: none !important;
+
+    .dropdown-menu {
+      left: -5px;
+      right: unset;
+    }
+  }
+
+  @include collapseNav() {
+    .desktop-links {
+      display: none !important;
+    }
+
+    .mobile-links {
+      display: block !important;
+    }
+  }
+
+  .flex-spacer {
+    flex-basis: 0;
+    flex-grow: 1
+  }
+  
+  svg.svg-inline--fa {
+    font-size: medium;
+    font-weight: 900;
+    display: flex;
+  }
+  
+  .danger {
+    color: #BF616A;
+    animation: 4s wiggle ease infinite;
+  }
+
+  // https://codepen.io/jeryj/pen/LzPjdJ
+  @keyframes wiggle {
+    0% {
+      transform: rotate(-3deg);
+      box-shadow: 0 2px 2px rgba(0,0,0,.2);
+    }
+    5% {
+      transform: rotate(20deg);
+    }
+    10% {
+      transform: rotate(-15deg);
+    }
+    15% {
+      transform: rotate(5deg);
+    }
+    20% {
+      transform: rotate(-1deg);
+    }
+    25% {
+      transform: rotate(0);
+      box-shadow: 0 2px 2px rgba(0,0,0,.2);
+    }
+  }
+}
