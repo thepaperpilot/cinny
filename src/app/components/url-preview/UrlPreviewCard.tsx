@@ -9,12 +9,16 @@ import {
   useIntersectionObserver,
 } from '../../hooks/useIntersectionObserver';
 import * as css from './UrlPreviewCard.css';
+import { tryDecodeURIComponent } from '../../utils/dom';
+import { mxcUrlToHttp } from '../../utils/matrix';
+import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 
 const linkStyles = { color: color.Success.Main };
 
 export const UrlPreviewCard = as<'div', { url: string; ts: number }>(
   ({ url, ts, ...props }, ref) => {
     const mx = useMatrixClient();
+    const useAuthentication = useMediaAuthentication();
     const [previewStatus, loadPreview] = useAsyncCallback(
       useCallback(() => mx.getUrlPreview(url, ts), [url, ts, mx])
     );
@@ -26,7 +30,7 @@ export const UrlPreviewCard = as<'div', { url: string; ts: number }>(
     if (previewStatus.status === AsyncStatus.Error) return null;
 
     const renderContent = (prev: IPreviewUrlResponse) => {
-      const imgUrl = mx.mxcUrlToHttp(prev['og:image'] || '', 256, 256, 'scale', false);
+      const imgUrl = mxcUrlToHttp(mx, prev['og:image'] || '', useAuthentication, 256, 256, 'scale', false);
 
       return (
         <>
@@ -43,7 +47,7 @@ export const UrlPreviewCard = as<'div', { url: string; ts: number }>(
               priority="300"
             >
               {typeof prev['og:site_name'] === 'string' && `${prev['og:site_name']} | `}
-              {decodeURIComponent(url)}
+              {tryDecodeURIComponent(url)}
             </Text>
             <Text truncate priority="400">
               <b>{prev['og:title']}</b>

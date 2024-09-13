@@ -32,17 +32,14 @@ export const isRoomId = (id: string): boolean => validMxId(id) && id.startsWith(
 
 export const isRoomAlias = (id: string): boolean => validMxId(id) && id.startsWith('#');
 
-export const parseMatrixToUrl = (url: string): [string | undefined, string | undefined] => {
-  const href = decodeURIComponent(url);
-
-  const match = href.match(/^https?:\/\/matrix.to\/#\/([@!$+#]\S+:[^\\?|^\s|^\\/]+)(\?(via=\S+))?/);
-  if (!match) return [undefined, undefined];
-  const [, g1AsMxId, , g3AsVia] = match;
-  return [g1AsMxId, g3AsVia];
-};
-
 export const getCanonicalAliasRoomId = (mx: MatrixClient, alias: string): string | undefined =>
-  mx.getRooms()?.find((room) => room.getCanonicalAlias() === alias)?.roomId;
+  mx
+    .getRooms()
+    ?.find(
+      (room) =>
+        room.getCanonicalAlias() === alias &&
+        getStateEvent(room, StateEvent.RoomTombstone) === undefined
+    )?.roomId;
 
 export const getCanonicalAliasOrRoomId = (mx: MatrixClient, roomId: string): string => {
   const room = mx.getRoom(roomId);
@@ -255,4 +252,41 @@ export const removeRoomIdFromMDirect = async (mx: MatrixClient, roomId: string):
   });
 
   await mx.setAccountData(AccountDataEvent.Direct, userIdToRoomIds);
+};
+
+export const mxcUrlToHttp = (
+  mx: MatrixClient,
+  mxcUrl: string,
+  useAuthentication?: boolean,
+  width?: number,
+  height?: number,
+  resizeMethod?: string,
+  allowDirectLinks?: boolean,
+  allowRedirects?: boolean
+): string | null =>
+  mx.mxcUrlToHttp(
+    mxcUrl,
+    width,
+    height,
+    resizeMethod,
+    allowDirectLinks,
+    allowRedirects,
+    useAuthentication
+  );
+
+export const downloadMedia = async (src: string): Promise<Blob> => {
+  // this request is authenticated by service worker
+  const res = await fetch(src, { method: 'GET' });
+  const blob = await res.blob();
+  return blob;
+};
+
+export const downloadEncryptedMedia = async (
+  src: string,
+  decryptContent: (buf: ArrayBuffer) => Promise<Blob>
+): Promise<Blob> => {
+  const encryptedContent = await downloadMedia(src);
+  const decryptedContent = await decryptContent(await encryptedContent.arrayBuffer());
+
+  return decryptedContent;
 };

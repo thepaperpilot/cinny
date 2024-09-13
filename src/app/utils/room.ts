@@ -273,16 +273,26 @@ export const joinRuleToIconSrc = (
 export const getRoomAvatarUrl = (
   mx: MatrixClient,
   room: Room,
-  size: 32 | 96 = 32
-): string | undefined => room.getAvatarUrl(mx.baseUrl, size, size, 'crop') ?? undefined;
+  size: 32 | 96 = 32,
+  useAuthentication = false
+): string | undefined => {
+  const mxcUrl = room.getMxcAvatarUrl();
+  return mxcUrl
+    ? mx.mxcUrlToHttp(mxcUrl, size, size, 'crop', undefined, false, useAuthentication) ?? undefined
+    : undefined;
+};
 
 export const getDirectRoomAvatarUrl = (
   mx: MatrixClient,
   room: Room,
-  size: 32 | 96 = 32
-): string | undefined =>
-  room.getAvatarFallbackMember()?.getAvatarUrl(mx.baseUrl, size, size, 'crop', undefined, false) ??
-  undefined;
+  size: 32 | 96 = 32,
+  useAuthentication = false
+): string | undefined => {
+  const mxcUrl = room.getAvatarFallbackMember()?.getMxcAvatarUrl();
+  return mxcUrl
+    ? mx.mxcUrlToHttp(mxcUrl, size, size, 'crop', undefined, false, useAuthentication) ?? undefined
+    : undefined;
+};
 
 export const trimReplyFromBody = (body: string): string => {
   const match = body.match(/^> <.+?> .+\n(>.*\n)*?\n/m);
@@ -389,13 +399,18 @@ export const getEditedEvent = (
   return edits && getLatestEdit(mEvent, edits.getRelations());
 };
 
-export const canEditEvent = (mx: MatrixClient, mEvent: MatrixEvent) =>
-  mEvent.getSender() === mx.getUserId() &&
-  !mEvent.isRelation() &&
-  mEvent.getType() === MessageEvent.RoomMessage &&
-  (mEvent.getContent().msgtype === MsgType.Text ||
-    mEvent.getContent().msgtype === MsgType.Emote ||
-    mEvent.getContent().msgtype === MsgType.Notice);
+export const canEditEvent = (mx: MatrixClient, mEvent: MatrixEvent) => {
+  const content = mEvent.getContent();
+  const relationType = content['m.relates_to']?.rel_type;
+  return (
+    mEvent.getSender() === mx.getUserId() &&
+    (!relationType || relationType === RelationType.Thread) &&
+    mEvent.getType() === MessageEvent.RoomMessage &&
+    (content.msgtype === MsgType.Text ||
+      content.msgtype === MsgType.Emote ||
+      content.msgtype === MsgType.Notice)
+  );
+};
 
 export const getLatestEditableEvt = (
   timeline: EventTimeline,

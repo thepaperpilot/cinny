@@ -3,13 +3,17 @@ import React, { MouseEventHandler, useMemo } from 'react';
 import { IEventWithRoomId, JoinRule, RelationType, Room } from 'matrix-js-sdk';
 import { HTMLReactParserOptions } from 'html-react-parser';
 import { Avatar, Box, Chip, Header, Icon, Icons, Text, config } from 'folds';
+import { Opts as LinkifyOpts } from 'linkifyjs';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import {
+  factoryRenderLinkifyWithMention,
   getReactCustomHtmlParser,
+  LINKIFY_OPTS,
   makeHighlightRegex,
+  makeMentionCustomProps,
+  renderMatrixMention,
 } from '../../plugins/react-custom-html-parser';
-import { getMxIdLocalPart, isRoomId, isUserId } from '../../utils/matrix';
-import { openJoinAlias, openProfileViewer } from '../../../client/action/navigation';
+import { getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
 import { GetContentCallback, MessageEvent, StateEvent } from '../../../types/matrix/room';
 import {
@@ -31,8 +35,10 @@ import { getMemberAvatarMxc, getMemberDisplayName, getRoomAvatarUrl } from '../.
 import colorMXID from '../../../util/colorMXID';
 import { ResultItem } from './useMessageSearch';
 import { SequenceCard } from '../../components/sequence-card';
-import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { UserAvatar } from '../../components/user-avatar';
+import { useMentionClickHandler } from '../../hooks/useMentionClickHandler';
+import { useSpoilerClickHandler } from '../../hooks/useSpoilerClickHandler';
+import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 
 type SearchResultGroupProps = {
   room: Room;
@@ -51,38 +57,31 @@ export function SearchResultGroup({
   onOpen,
 }: SearchResultGroupProps) {
   const mx = useMatrixClient();
-  const { navigateRoom, navigateSpace } = useRoomNavigate();
+  const useAuthentication = useMediaAuthentication();
   const highlightRegex = useMemo(() => makeHighlightRegex(highlights), [highlights]);
 
+  const mentionClickHandler = useMentionClickHandler(room.roomId);
+  const spoilerClickHandler = useSpoilerClickHandler();
+
+  const linkifyOpts = useMemo<LinkifyOpts>(
+    () => ({
+      ...LINKIFY_OPTS,
+      render: factoryRenderLinkifyWithMention((href) =>
+        renderMatrixMention(mx, room.roomId, href, makeMentionCustomProps(mentionClickHandler))
+      ),
+    }),
+    [mx, room, mentionClickHandler]
+  );
   const htmlReactParserOptions = useMemo<HTMLReactParserOptions>(
     () =>
-      getReactCustomHtmlParser(mx, room, {
+      getReactCustomHtmlParser(mx, room.roomId, {
+        linkifyOpts,
         highlightRegex,
-        handleSpoilerClick: (evt) => {
-          const target = evt.currentTarget;
-          if (target.getAttribute('aria-pressed') === 'true') {
-            evt.stopPropagation();
-            target.setAttribute('aria-pressed', 'false');
-            target.style.cursor = 'initial';
-          }
-        },
-        handleMentionClick: (evt) => {
-          const target = evt.currentTarget;
-          const mentionId = target.getAttribute('data-mention-id');
-          if (typeof mentionId !== 'string') return;
-          if (isUserId(mentionId)) {
-            openProfileViewer(mentionId, room.roomId);
-            return;
-          }
-          if (isRoomId(mentionId) && mx.getRoom(mentionId)) {
-            if (mx.getRoom(mentionId)?.isSpaceRoom()) navigateSpace(mentionId);
-            else navigateRoom(mentionId);
-            return;
-          }
-          openJoinAlias(mentionId);
-        },
+        useAuthentication,
+        handleSpoilerClick: spoilerClickHandler,
+        handleMentionClick: mentionClickHandler,
       }),
-    [mx, room, highlightRegex, navigateRoom, navigateSpace]
+    [mx, room, linkifyOpts, highlightRegex, mentionClickHandler, spoilerClickHandler, useAuthentication]
   );
 
   const renderMatrixEvent = useMatrixEventRenderer<[IEventWithRoomId, string, GetContentCallback]>(
@@ -101,6 +100,7 @@ export function SearchResultGroup({
             mediaAutoLoad={mediaAutoLoad}
             urlPreview={urlPreview}
             htmlReactParserOptions={htmlReactParserOptions}
+            linkifyOpts={linkifyOpts}
             highlightRegex={highlightRegex}
             outlineAttachment
           />
@@ -151,7 +151,7 @@ export function SearchResultGroup({
     }
   );
 
-  const handleOpenClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
+  const handleOpenClick: MouseEventHandler = (evt) => {
     const eventId = evt.currentTarget.getAttribute('data-event-id');
     if (!eventId) return;
     onOpen(room.roomId, eventId);
@@ -164,7 +164,7 @@ export function SearchResultGroup({
           <Avatar size="200" radii="300">
             <RoomAvatar
               roomId={room.roomId}
-              src={getRoomAvatarUrl(mx, room, 96)}
+              src={getRoomAvatarUrl(mx, room, 96, useAuthentication)}
               alt={room.name}
               renderFallback={() => (
                 <RoomIcon size="50" joinRule={room.getJoinRule() ?? JoinRule.Restricted} filled />
@@ -186,15 +186,16 @@ export function SearchResultGroup({
             event.sender;
           const senderAvatarMxc = getMemberAvatarMxc(room, event.sender);
 
+          const relation = event.content['m.relates_to'];
           const mainEventId =
-            event.content['m.relates_to']?.rel_type === RelationType.Replace
-              ? event.content['m.relates_to'].event_id
-              : event.event_id;
+            relation?.rel_type === RelationType.Replace ? relation.event_id : event.event_id;
 
           const getContent = (() =>
             event.content['m.new_content'] ?? event.content) as GetContentCallback;
 
-          const replyEventId = event.content['m.relates_to']?.['m.in_reply_to']?.event_id;
+          const replyEventId = relation?.['m.in_reply_to']?.event_id;
+          const threadRootId =
+            relation?.rel_type === RelationType.Thread ? relation.event_id : undefined;
 
           return (
             <SequenceCard
@@ -211,7 +212,7 @@ export function SearchResultGroup({
                         userId={event.sender}
                         src={
                           senderAvatarMxc
-                            ? mx.mxcUrlToHttp(senderAvatarMxc, 48, 48, 'crop') ?? undefined
+                            ? mxcUrlToHttp(mx, senderAvatarMxc, useAuthentication, 48, 48, 'crop') ?? undefined
                             : undefined
                         }
                         alt={displayName}
@@ -243,11 +244,10 @@ export function SearchResultGroup({
                 </Box>
                 {replyEventId && (
                   <Reply
-                    as="button"
                     mx={mx}
                     room={room}
-                    eventId={replyEventId}
-                    data-event-id={replyEventId}
+                    replyEventId={replyEventId}
+                    threadRootId={threadRootId}
                     onClick={handleOpenClick}
                   />
                 )}

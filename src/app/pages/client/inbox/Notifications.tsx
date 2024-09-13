@@ -20,13 +20,15 @@ import {
   IRoomEvent,
   JoinRule,
   Method,
+  RelationType,
   Room,
 } from 'matrix-js-sdk';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { HTMLReactParserOptions } from 'html-react-parser';
+import { Opts as LinkifyOpts } from 'linkifyjs';
 import { Page, PageContent, PageContentCenter, PageHeader } from '../../../components/page';
 import { useMatrixClient } from '../../../hooks/useMatrixClient';
-import { getMxIdLocalPart, isRoomId, isUserId } from '../../../utils/matrix';
+import { getMxIdLocalPart, mxcUrlToHttp } from '../../../utils/matrix';
 import { InboxNotificationsPathSearchParams } from '../../paths';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { SequenceCard } from '../../../components/sequence-card';
@@ -52,8 +54,13 @@ import {
   Username,
 } from '../../../components/message';
 import colorMXID from '../../../../util/colorMXID';
-import { getReactCustomHtmlParser } from '../../../plugins/react-custom-html-parser';
-import { openJoinAlias, openProfileViewer } from '../../../../client/action/navigation';
+import {
+  factoryRenderLinkifyWithMention,
+  getReactCustomHtmlParser,
+  LINKIFY_OPTS,
+  makeMentionCustomProps,
+  renderMatrixMention,
+} from '../../../plugins/react-custom-html-parser';
 import { RenderMessageContent } from '../../../components/RenderMessageContent';
 import { useSetting } from '../../../state/hooks/settings';
 import { settingsAtom } from '../../../state/settings';
@@ -70,6 +77,11 @@ import { ContainerColor } from '../../../styles/ContainerColor.css';
 import { VirtualTile } from '../../../components/virtualizer';
 import { UserAvatar } from '../../../components/user-avatar';
 import { EncryptedContent } from '../../../features/room/message';
+import { useMentionClickHandler } from '../../../hooks/useMentionClickHandler';
+import { useSpoilerClickHandler } from '../../../hooks/useSpoilerClickHandler';
+import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
+import { BackRouteHandler } from '../../../components/BackRouteHandler';
+import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 
 type RoomNotificationsGroup = {
   roomId: string;
@@ -180,37 +192,29 @@ function RoomNotificationsGroupComp({
   onOpen,
 }: RoomNotificationsGroupProps) {
   const mx = useMatrixClient();
+  const useAuthentication = useMediaAuthentication();
   const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
-  const { navigateRoom, navigateSpace } = useRoomNavigate();
+  const mentionClickHandler = useMentionClickHandler(room.roomId);
+  const spoilerClickHandler = useSpoilerClickHandler();
 
+  const linkifyOpts = useMemo<LinkifyOpts>(
+    () => ({
+      ...LINKIFY_OPTS,
+      render: factoryRenderLinkifyWithMention((href) =>
+        renderMatrixMention(mx, room.roomId, href, makeMentionCustomProps(mentionClickHandler))
+      ),
+    }),
+    [mx, room, mentionClickHandler]
+  );
   const htmlReactParserOptions = useMemo<HTMLReactParserOptions>(
     () =>
-      getReactCustomHtmlParser(mx, room, {
-        handleSpoilerClick: (evt) => {
-          const target = evt.currentTarget;
-          if (target.getAttribute('aria-pressed') === 'true') {
-            evt.stopPropagation();
-            target.setAttribute('aria-pressed', 'false');
-            target.style.cursor = 'initial';
-          }
-        },
-        handleMentionClick: (evt) => {
-          const target = evt.currentTarget;
-          const mentionId = target.getAttribute('data-mention-id');
-          if (typeof mentionId !== 'string') return;
-          if (isUserId(mentionId)) {
-            openProfileViewer(mentionId, room.roomId);
-            return;
-          }
-          if (isRoomId(mentionId) && mx.getRoom(mentionId)) {
-            if (mx.getRoom(mentionId)?.isSpaceRoom()) navigateSpace(mentionId);
-            else navigateRoom(mentionId);
-            return;
-          }
-          openJoinAlias(mentionId);
-        },
+      getReactCustomHtmlParser(mx, room.roomId, {
+        linkifyOpts,
+        useAuthentication,
+        handleSpoilerClick: spoilerClickHandler,
+        handleMentionClick: mentionClickHandler,
       }),
-    [mx, room, navigateRoom, navigateSpace]
+    [mx, room, linkifyOpts, mentionClickHandler, spoilerClickHandler, useAuthentication]
   );
 
   const renderMatrixEvent = useMatrixEventRenderer<[IRoomEvent, string, GetContentCallback]>(
@@ -229,6 +233,7 @@ function RoomNotificationsGroupComp({
             mediaAutoLoad={mediaAutoLoad}
             urlPreview={urlPreview}
             htmlReactParserOptions={htmlReactParserOptions}
+            linkifyOpts={linkifyOpts}
             outlineAttachment
           />
         );
@@ -287,6 +292,7 @@ function RoomNotificationsGroupComp({
                     mediaAutoLoad={mediaAutoLoad}
                     urlPreview={urlPreview}
                     htmlReactParserOptions={htmlReactParserOptions}
+                    linkifyOpts={linkifyOpts}
                   />
                 );
               }
@@ -350,7 +356,7 @@ function RoomNotificationsGroupComp({
     }
   );
 
-  const handleOpenClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
+  const handleOpenClick: MouseEventHandler = (evt) => {
     const eventId = evt.currentTarget.getAttribute('data-event-id');
     if (!eventId) return;
     onOpen(room.roomId, eventId);
@@ -366,7 +372,7 @@ function RoomNotificationsGroupComp({
           <Avatar size="200" radii="300">
             <RoomAvatar
               roomId={room.roomId}
-              src={getRoomAvatarUrl(mx, room, 96)}
+              src={getRoomAvatarUrl(mx, room, 96, useAuthentication)}
               alt={room.name}
               renderFallback={() => (
                 <RoomIcon size="50" joinRule={room.getJoinRule() ?? JoinRule.Restricted} filled />
@@ -401,7 +407,10 @@ function RoomNotificationsGroupComp({
           const senderAvatarMxc = getMemberAvatarMxc(room, event.sender);
           const getContent = (() => event.content) as GetContentCallback;
 
-          const replyEventId = event.content['m.relates_to']?.['m.in_reply_to']?.event_id;
+          const relation = event.content['m.relates_to'];
+          const replyEventId = relation?.['m.in_reply_to']?.event_id;
+          const threadRootId =
+            relation?.rel_type === RelationType.Thread ? relation.event_id : undefined;
 
           return (
             <SequenceCard
@@ -418,7 +427,7 @@ function RoomNotificationsGroupComp({
                         userId={event.sender}
                         src={
                           senderAvatarMxc
-                            ? mx.mxcUrlToHttp(senderAvatarMxc, 48, 48, 'crop') ?? undefined
+                            ? mxcUrlToHttp(mx, senderAvatarMxc, useAuthentication, 48, 48, 'crop') ?? undefined
                             : undefined
                         }
                         alt={displayName}
@@ -450,11 +459,10 @@ function RoomNotificationsGroupComp({
                 </Box>
                 {replyEventId && (
                   <Reply
-                    as="button"
                     mx={mx}
                     room={room}
-                    eventId={replyEventId}
-                    data-event-id={replyEventId}
+                    replyEventId={replyEventId}
+                    threadRootId={threadRootId}
                     onClick={handleOpenClick}
                   />
                 )}
@@ -484,6 +492,7 @@ export function Notifications() {
   const mx = useMatrixClient();
   const [mediaAutoLoad] = useSetting(settingsAtom, 'mediaAutoLoad');
   const [urlPreview] = useSetting(settingsAtom, 'urlPreview');
+  const screenSize = useScreenSizeContext();
 
   const { navigateRoom } = useRoomNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -549,12 +558,26 @@ export function Notifications() {
 
   return (
     <Page>
-      <PageHeader>
-        <Box grow="Yes" justifyContent="Center" alignItems="Center" gap="200">
-          <Icon size="400" src={Icons.Message} />
-          <Text size="H3" truncate>
-            Notification Messages
-          </Text>
+      <PageHeader balance>
+        <Box grow="Yes" gap="200">
+          <Box grow="Yes" basis="No">
+            {screenSize === ScreenSize.Mobile && (
+              <BackRouteHandler>
+                {(onBack) => (
+                  <IconButton onClick={onBack}>
+                    <Icon src={Icons.ArrowLeft} />
+                  </IconButton>
+                )}
+              </BackRouteHandler>
+            )}
+          </Box>
+          <Box alignItems="Center" gap="200">
+            {screenSize !== ScreenSize.Mobile && <Icon size="400" src={Icons.Message} />}
+            <Text size="H3" truncate>
+              Notification Messages
+            </Text>
+          </Box>
+          <Box grow="Yes" basis="No" />
         </Box>
       </PageHeader>
 

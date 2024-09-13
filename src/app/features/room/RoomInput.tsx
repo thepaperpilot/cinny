@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { isKeyHotkey } from 'is-hotkey';
-import { EventType, IContent, MsgType, Room } from 'matrix-js-sdk';
+import { EventType, IContent, MsgType, RelationType, Room } from 'matrix-js-sdk';
 import { ReactEditor } from 'slate-react';
 import { Transforms, Editor } from 'slate';
 import {
@@ -56,7 +56,7 @@ import {
 } from '../../components/editor';
 import { EmojiBoard, EmojiBoardTab } from '../../components/emoji-board';
 import { UseStateProvider } from '../../components/UseStateProvider';
-import { TUploadContent, encryptFile, getImageInfo, getMxIdLocalPart } from '../../utils/matrix';
+import { TUploadContent, encryptFile, getImageInfo, getMxIdLocalPart, mxcUrlToHttp } from '../../utils/matrix';
 import { useTypingStatusUpdater } from '../../hooks/useTypingStatusUpdater';
 import { useFilePicker } from '../../hooks/useFilePicker';
 import { useFilePasteHandler } from '../../hooks/useFilePasteHandler';
@@ -106,8 +106,9 @@ import { CommandAutocomplete } from './CommandAutocomplete';
 import { Command, SHRUG, useCommands } from '../../hooks/useCommands';
 import { mobileOrTablet } from '../../utils/user-agent';
 import { useElementSizeObserver } from '../../hooks/useElementSizeObserver';
-import { ReplyLayout } from '../../components/message';
+import { ReplyLayout, ThreadIndicator } from '../../components/message';
 import { roomToParentsAtom } from '../../state/room/roomToParents';
+import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 
 interface RoomInputProps {
   editor: Editor;
@@ -118,6 +119,7 @@ interface RoomInputProps {
 export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
   ({ editor, fileDropContainerRef, roomId, room }, ref) => {
     const mx = useMatrixClient();
+    const useAuthentication = useMediaAuthentication();
     const [enterForNewline] = useSetting(settingsAtom, 'enterForNewline');
     const [isMarkdown] = useSetting(settingsAtom, 'isMarkdown');
     const commands = useCommands(mx, room);
@@ -186,9 +188,8 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
       Transforms.insertFragment(editor, msgDraft);
     }, [editor, msgDraft]);
 
-    useEffect(() => {
-      if (!mobileOrTablet()) ReactEditor.focus(editor);
-      return () => {
+    useEffect(
+      () => () => {
         if (!isEmptyEditor(editor)) {
           const parsedDraft = JSON.parse(JSON.stringify(editor.children));
           setMsgDraft(parsedDraft);
@@ -197,8 +198,9 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
         }
         resetEditor(editor);
         resetEditorHistory(editor);
-      };
-    }, [roomId, editor, setMsgDraft]);
+      },
+      [roomId, editor, setMsgDraft]
+    );
 
     const handleRemoveUpload = useCallback(
       (upload: TUploadContent | TUploadContent[]) => {
@@ -310,6 +312,11 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
             event_id: replyDraft.eventId,
           },
         };
+        if (replyDraft.relation?.rel_type === RelationType.Thread) {
+          content['m.relates_to'].event_id = replyDraft.relation.event_id;
+          content['m.relates_to'].rel_type = RelationType.Thread;
+          content['m.relates_to'].is_falling_back = false;
+        }
       }
       mx.sendMessage(roomId, content);
       resetEditor(editor);
@@ -361,7 +368,7 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
     };
 
     const handleStickerSelect = async (mxc: string, shortcode: string, label: string) => {
-      const stickerUrl = mx.mxcUrlToHttp(mxc);
+      const stickerUrl = mxcUrlToHttp(mx, mxc, useAuthentication);
       if (!stickerUrl) return;
 
       const info = await getImageInfo(
@@ -489,22 +496,25 @@ export const RoomInput = forwardRef<HTMLDivElement, RoomInputProps>(
                   >
                     <Icon src={Icons.Cross} size="50" />
                   </IconButton>
-                  <ReplyLayout
-                    userColor={colorMXID(replyDraft.userId)}
-                    username={
+                  <Box direction="Column">
+                    {replyDraft.relation?.rel_type === RelationType.Thread && <ThreadIndicator />}
+                    <ReplyLayout
+                      userColor={colorMXID(replyDraft.userId)}
+                      username={
+                        <Text size="T300" truncate>
+                          <b>
+                            {getMemberDisplayName(room, replyDraft.userId) ??
+                              getMxIdLocalPart(replyDraft.userId) ??
+                              replyDraft.userId}
+                          </b>
+                        </Text>
+                      }
+                    >
                       <Text size="T300" truncate>
-                        <b>
-                          {getMemberDisplayName(room, replyDraft.userId) ??
-                            getMxIdLocalPart(replyDraft.userId) ??
-                            replyDraft.userId}
-                        </b>
+                        {trimReplyFromBody(replyDraft.body)}
                       </Text>
-                    }
-                  >
-                    <Text size="T300" truncate>
-                      {trimReplyFromBody(replyDraft.body)}
-                    </Text>
-                  </ReplyLayout>
+                    </ReplyLayout>
+                  </Box>
                 </Box>
               </div>
             )

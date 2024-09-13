@@ -30,6 +30,7 @@ import { AutoDiscoveryInfoProvider } from '../../hooks/useAutoDiscoveryInfo';
 import { AuthFlowsLoader } from '../../components/AuthFlowsLoader';
 import { AuthFlowsProvider } from '../../hooks/useAuthFlows';
 import { AuthServerProvider } from '../../hooks/useAuthServer';
+import { tryDecodeURIComponent } from '../../utils/dom';
 
 const currentAuthPath = (pathname: string): string => {
   if (matchPath(LOGIN_PATH, pathname)) {
@@ -73,7 +74,7 @@ export function AuthLayout() {
   const clientConfig = useClientConfig();
 
   const defaultServer = clientDefaultServer(clientConfig);
-  let server: string = urlEncodedServer ? decodeURIComponent(urlEncodedServer) : defaultServer;
+  let server: string = urlEncodedServer ? tryDecodeURIComponent(urlEncodedServer) : defaultServer;
 
   if (!clientAllowedServer(clientConfig, server)) {
     server = defaultServer;
@@ -95,7 +96,7 @@ export function AuthLayout() {
 
   // if server is mismatches with path server, update path
   useEffect(() => {
-    if (!urlEncodedServer || decodeURIComponent(urlEncodedServer) !== server) {
+    if (!urlEncodedServer || tryDecodeURIComponent(urlEncodedServer) !== server) {
       navigate(
         generatePath(currentAuthPath(location.pathname), {
           server: encodeURIComponent(server),

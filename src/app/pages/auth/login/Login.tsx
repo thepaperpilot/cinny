@@ -73,9 +73,7 @@ export function Login() {
           <SSOLogin
             providers={parsedFlows.sso.identity_providers}
             redirectUrl={ssoRedirectUrl}
-            asIcons={
-              parsedFlows.password !== undefined && parsedFlows.sso.identity_providers.length > 2
-            }
+            saveScreenSpace={parsedFlows.password !== undefined}
           />
         </>
       )}

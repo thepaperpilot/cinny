@@ -16,7 +16,7 @@ import {
   EventTimeline,
   EventTimelineSet,
   EventTimelineSetHandlerMap,
-  IEncryptedFile,
+  IContent,
   MatrixClient,
   MatrixEvent,
   Room,
@@ -45,14 +45,9 @@ import {
   toRem,
 } from 'folds';
 import { isKeyHotkey } from 'is-hotkey';
-import {
-  decryptFile,
-  eventWithShortcode,
-  factoryEventSentBy,
-  getMxIdLocalPart,
-  isRoomId,
-  isUserId,
-} from '../../utils/matrix';
+import { Opts as LinkifyOpts } from 'linkifyjs';
+import { useTranslation } from 'react-i18next';
+import { eventWithShortcode, factoryEventSentBy, getMxIdLocalPart } from '../../utils/matrix';
 import { useMatrixClient } from '../../hooks/useMatrixClient';
 import { useVirtualPaginator, ItemRange } from '../../hooks/useVirtualPaginator';
 import { useAlive } from '../../hooks/useAlive';
@@ -70,7 +65,13 @@ import {
   ImageContent,
   EventContent,
 } from '../../components/message';
-import { getReactCustomHtmlParser } from '../../plugins/react-custom-html-parser';
+import {
+  factoryRenderLinkifyWithMention,
+  getReactCustomHtmlParser,
+  LINKIFY_OPTS,
+  makeMentionCustomProps,
+  renderMatrixMention,
+} from '../../plugins/react-custom-html-parser';
 import {
   canEditEvent,
   decryptAllTimelineEvent,
@@ -85,7 +86,7 @@ import {
 } from '../../utils/room';
 import { useSetting } from '../../state/hooks/settings';
 import { settingsAtom } from '../../state/settings';
-import { openJoinAlias, openProfileViewer } from '../../../client/action/navigation';
+import { openProfileViewer } from '../../../client/action/navigation';
 import { useMatrixEventRenderer } from '../../hooks/useMatrixEventRenderer';
 import { Reactions, Message, Event, EncryptedContent } from './message';
 import { useMemberEventParser } from '../../hooks/useMemberEventParser';
@@ -109,10 +110,13 @@ import { useDocumentFocusChange } from '../../hooks/useDocumentFocusChange';
 import { RenderMessageContent } from '../../components/RenderMessageContent';
 import { Image } from '../../components/media';
 import { ImageViewer } from '../../components/image-viewer';
-import { useRoomNavigate } from '../../hooks/useRoomNavigate';
 import { roomToParentsAtom } from '../../state/room/roomToParents';
 import { useRoomUnread } from '../../state/hooks/unread';
 import { roomToUnreadAtom } from '../../state/room/roomToUnread';
+import { useMentionClickHandler } from '../../hooks/useMentionClickHandler';
+import { useSpoilerClickHandler } from '../../hooks/useSpoilerClickHandler';
+import { useRoomNavigate } from '../../hooks/useRoomNavigate';
+import { useMediaAuthentication } from '../../hooks/useMediaAuthentication';
 
 const TimelineFloat = as<'div', css.TimelineFloatVariants>(
   ({ position, className, ...props }, ref) => (
@@ -209,18 +213,6 @@ export const getEventIdAbsoluteIndex = (
     .reduce((accValue, timeline) => timeline.getEvents().length + accValue, 0);
   return baseIndex + eventIndex;
 };
-
-export const factoryGetFileSrcUrl =
-  (httpUrl: string, mimeType: string, encFile?: IEncryptedFile) => async (): Promise<string> => {
-    if (encFile) {
-      if (typeof httpUrl !== 'string') throw new Error('Malformed event');
-      const encRes = await fetch(httpUrl, { method: 'GET' });
-      const encData = await encRes.arrayBuffer();
-      const decryptedBlob = await decryptFile(encData, mimeType, encFile);
-      return URL.createObjectURL(decryptedBlob);
-    }
-    return httpUrl;
-  };
 
 type RoomTimelineProps = {
   room: Room;
@@ -428,6 +420,7 @@ const getRoomUnreadInfo = (room: Room, scrollTo = false) => {
 
 export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimelineProps) {
   const mx = useMatrixClient();
+  const useAuthentication = useMediaAuthentication();
   const encryptedRoom = mx.isRoomEncrypted(room.roomId);
   const [messageLayout] = useSetting(settingsAtom, 'messageLayout');
   const [messageSpacing] = useSetting(settingsAtom, 'messageSpacing');
@@ -445,9 +438,11 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   const canRedact = canDoAction('redact', myPowerLevel);
   const canSendReaction = canSendEvent(MessageEvent.Reaction, myPowerLevel);
   const [editId, setEditId] = useState<string>();
-  const { navigateRoom, navigateSpace } = useRoomNavigate();
   const roomToParents = useAtomValue(roomToParentsAtom);
   const unread = useRoomUnread(room.roomId, roomToUnreadAtom);
+  const { navigateRoom } = useRoomNavigate();
+  const mentionClickHandler = useMentionClickHandler(room.roomId);
+  const spoilerClickHandler = useSpoilerClickHandler();
 
   const imagePackRooms: Room[] = useMemo(() => {
     const allParentSpaces = [room.roomId].concat(
@@ -487,34 +482,24 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   >();
   const alive = useAlive();
 
+  const linkifyOpts = useMemo<LinkifyOpts>(
+    () => ({
+      ...LINKIFY_OPTS,
+      render: factoryRenderLinkifyWithMention((href) =>
+        renderMatrixMention(mx, room.roomId, href, makeMentionCustomProps(mentionClickHandler))
+      ),
+    }),
+    [mx, room, mentionClickHandler]
+  );
   const htmlReactParserOptions = useMemo<HTMLReactParserOptions>(
     () =>
-      getReactCustomHtmlParser(mx, room, {
-        handleSpoilerClick: (evt) => {
-          const target = evt.currentTarget;
-          if (target.getAttribute('aria-pressed') === 'true') {
-            evt.stopPropagation();
-            target.setAttribute('aria-pressed', 'false');
-            target.style.cursor = 'initial';
-          }
-        },
-        handleMentionClick: (evt) => {
-          const target = evt.currentTarget;
-          const mentionId = target.getAttribute('data-mention-id');
-          if (typeof mentionId !== 'string') return;
-          if (isUserId(mentionId)) {
-            openProfileViewer(mentionId, room.roomId);
-            return;
-          }
-          if (isRoomId(mentionId) && mx.getRoom(mentionId)) {
-            if (mx.getRoom(mentionId)?.isSpaceRoom()) navigateSpace(mentionId);
-            else navigateRoom(mentionId);
-            return;
-          }
-          openJoinAlias(mentionId);
-        },
+      getReactCustomHtmlParser(mx, room.roomId, {
+        linkifyOpts,
+        useAuthentication,
+        handleSpoilerClick: spoilerClickHandler,
+        handleMentionClick: mentionClickHandler,
       }),
-    [mx, room, navigateRoom, navigateSpace]
+    [mx, room, linkifyOpts, spoilerClickHandler, mentionClickHandler, useAuthentication]
   );
   const parseMemberEvent = useMemberEventParser();
 
@@ -597,7 +582,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         // so timeline can be updated with evt like: edits, reactions etc
         if (atBottomRef.current) {
           if (document.hasFocus() && (!unreadInfo || mEvt.getSender() === mx.getUserId())) {
-            requestAnimationFrame(() => markAsRead(mx, mEvt.getRoomId()));
+            requestAnimationFrame(() => markAsRead(mx, mEvt.getRoomId()!));
           }
 
           if (document.hasFocus()) {
@@ -726,6 +711,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
           const editableEvtId = editableEvt?.getId();
           if (!editableEvtId) return;
           setEditId(editableEvtId);
+          evt.preventDefault();
         }
       },
       [mx, room, editor]
@@ -819,6 +805,9 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
   }, [scrollToElement, editId]);
 
   const handleJumpToLatest = () => {
+    if (eventId) {
+      navigateRoom(room.roomId, undefined, { replace: true });
+    }
     setTimeline(getInitialTimeline(room));
     scrollToBottomRef.current.count += 1;
     scrollToBottomRef.current.smooth = false;
@@ -835,13 +824,13 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     markAsRead(mx, room.roomId);
   };
 
-  const handleOpenReply: MouseEventHandler<HTMLButtonElement> = useCallback(
+  const handleOpenReply: MouseEventHandler = useCallback(
     async (evt) => {
-      const replyId = evt.currentTarget.getAttribute('data-reply-id');
-      if (typeof replyId !== 'string') return;
-      const replyTimeline = getEventTimeline(room, replyId);
+      const targetId = evt.currentTarget.getAttribute('data-event-id');
+      if (!targetId) return;
+      const replyTimeline = getEventTimeline(room, targetId);
       const absoluteIndex =
-        replyTimeline && getEventIdAbsoluteIndex(timeline.linkedTimelines, replyTimeline, replyId);
+        replyTimeline && getEventIdAbsoluteIndex(timeline.linkedTimelines, replyTimeline, targetId);
 
       if (typeof absoluteIndex === 'number') {
         scrollToItem(absoluteIndex, {
@@ -856,7 +845,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         });
       } else {
         setTimeline(getEmptyTimeline());
-        loadEventTimeline(replyId);
+        loadEventTimeline(targetId);
       }
     },
     [room, timeline, scrollToItem, loadEventTimeline]
@@ -907,8 +896,9 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
       const replyEvt = room.findEventById(replyId);
       if (!replyEvt) return;
       const editedReply = getEditedEvent(replyId, replyEvt, room.getUnfilteredTimelineSet());
-      const { body, formatted_body: formattedBody }: Record<string, string> =
-        editedReply?.getContent()['m.new_content'] ?? replyEvt.getContent();
+      const content: IContent = editedReply?.getContent()['m.new_content'] ?? replyEvt.getContent();
+      const { body, formatted_body: formattedBody } = content;
+      const { 'm.relates_to': relation } = replyEvt.getOriginalContent();
       const senderId = replyEvt.getSender();
       if (senderId && typeof body === 'string') {
         setReplyDraft({
@@ -916,6 +906,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
           eventId: replyId,
           body,
           formattedBody,
+          relation,
         });
         setTimeout(() => ReactEditor.focus(editor), 100);
       }
@@ -957,6 +948,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
     },
     [editor]
   );
+  const { t } = useTranslation();
 
   const renderMatrixEvent = useMatrixEventRenderer<
     [string, MatrixEvent, number, EventTimelineSet, boolean]
@@ -966,7 +958,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const reactionRelations = getEventReactions(timelineSet, mEventId);
         const reactions = reactionRelations && reactionRelations.getSortedAnnotationsByKey();
         const hasReactions = reactions && reactions.length > 0;
-        const { replyEventId } = mEvent;
+        const { replyEventId, threadRootId } = mEvent;
         const highlighted = focusItem?.index === item && focusItem.highlight;
 
         const editedEvent = getEditedEvent(mEventId, mEvent, timelineSet);
@@ -1001,12 +993,11 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             reply={
               replyEventId && (
                 <Reply
-                  as="button"
                   mx={mx}
                   room={room}
                   timelineSet={timelineSet}
-                  eventId={replyEventId}
-                  data-reply-id={replyEventId}
+                  replyEventId={replyEventId}
+                  threadRootId={threadRootId}
                   onClick={handleOpenReply}
                 />
               )
@@ -1036,6 +1027,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                 mediaAutoLoad={mediaAutoLoad}
                 urlPreview={showUrlPreview}
                 htmlReactParserOptions={htmlReactParserOptions}
+                linkifyOpts={linkifyOpts}
                 outlineAttachment={messageLayout === 2}
               />
             )}
@@ -1046,7 +1038,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
         const reactionRelations = getEventReactions(timelineSet, mEventId);
         const reactions = reactionRelations && reactionRelations.getSortedAnnotationsByKey();
         const hasReactions = reactions && reactions.length > 0;
-        const { replyEventId } = mEvent;
+        const { replyEventId, threadRootId } = mEvent;
         const highlighted = focusItem?.index === item && focusItem.highlight;
 
         return (
@@ -1073,12 +1065,11 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
             reply={
               replyEventId && (
                 <Reply
-                  as="button"
                   mx={mx}
                   room={room}
                   timelineSet={timelineSet}
-                  eventId={replyEventId}
-                  data-reply-id={replyEventId}
+                  replyEventId={replyEventId}
+                  threadRootId={threadRootId}
                   onClick={handleOpenReply}
                 />
               )
@@ -1132,6 +1123,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                       mediaAutoLoad={mediaAutoLoad}
                       urlPreview={showUrlPreview}
                       htmlReactParserOptions={htmlReactParserOptions}
+                      linkifyOpts={linkifyOpts}
                       outlineAttachment={messageLayout === 2}
                     />
                   );
@@ -1270,7 +1262,7 @@ export function RoomTimeline({ room, eventId, roomInputRef, editor }: RoomTimeli
                 <Box grow="Yes" direction="Column">
                   <Text size="T300" priority="300">
                     <b>{senderName}</b>
-                    {' changed room name'}
+                    {t('Organisms.RoomCommon.changed_room_name')}
                   </Text>
                 </Box>
               }

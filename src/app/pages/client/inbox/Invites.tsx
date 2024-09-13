@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Icon,
+  IconButton,
   Icons,
   Overlay,
   OverlayBackdrop,
@@ -39,6 +40,9 @@ import { RoomTopicViewer } from '../../../components/room-topic-viewer';
 import { AsyncStatus, useAsyncCallback } from '../../../hooks/useAsyncCallback';
 import { useRoomNavigate } from '../../../hooks/useRoomNavigate';
 import { useRoomTopic } from '../../../hooks/useRoomMeta';
+import { ScreenSize, useScreenSizeContext } from '../../../hooks/useScreenSize';
+import { BackRouteHandler } from '../../../components/BackRouteHandler';
+import { useMediaAuthentication } from '../../../hooks/useMediaAuthentication';
 
 const COMPACT_CARD_WIDTH = 548;
 
@@ -51,6 +55,7 @@ type InviteCardProps = {
 };
 function InviteCard({ room, userId, direct, compact, onNavigate }: InviteCardProps) {
   const mx = useMatrixClient();
+  const useAuthentication = useMediaAuthentication();
   const roomName = room.name || room.getCanonicalAlias() || room.roomId;
   const member = room.getMember(userId);
   const memberEvent = member?.events.member;
@@ -107,7 +112,7 @@ function InviteCard({ room, userId, direct, compact, onNavigate }: InviteCardPro
         <Avatar size="300">
           <RoomAvatar
             roomId={room.roomId}
-            src={direct ? getDirectRoomAvatarUrl(mx, room, 96) : getRoomAvatarUrl(mx, room, 96)}
+            src={direct ? getDirectRoomAvatarUrl(mx, room, 96, useAuthentication) : getRoomAvatarUrl(mx, room, 96, useAuthentication)}
             alt={roomName}
             renderFallback={() => (
               <Text as="span" size="H6">
@@ -205,6 +210,7 @@ export function Invites() {
     useCallback(() => containerRef.current, []),
     useCallback((width) => setCompact(width <= COMPACT_CARD_WIDTH), [])
   );
+  const screenSize = useScreenSizeContext();
 
   const { navigateRoom, navigateSpace } = useRoomNavigate();
 
@@ -225,12 +231,26 @@ export function Invites() {
 
   return (
     <Page>
-      <PageHeader>
-        <Box grow="Yes" justifyContent="Center" alignItems="Center" gap="200">
-          <Icon size="400" src={Icons.Mail} />
-          <Text size="H3" truncate>
-            Invitations
-          </Text>
+      <PageHeader balance>
+        <Box grow="Yes" gap="200">
+          <Box grow="Yes" basis="No">
+            {screenSize === ScreenSize.Mobile && (
+              <BackRouteHandler>
+                {(onBack) => (
+                  <IconButton onClick={onBack}>
+                    <Icon src={Icons.ArrowLeft} />
+                  </IconButton>
+                )}
+              </BackRouteHandler>
+            )}
+          </Box>
+          <Box alignItems="Center" gap="200">
+            {screenSize !== ScreenSize.Mobile && <Icon size="400" src={Icons.Mail} />}
+            <Text size="H3" truncate>
+              Invitations
+            </Text>
+          </Box>
+          <Box grow="Yes" basis="No" />
         </Box>
       </PageHeader>
       <Box grow="Yes">
